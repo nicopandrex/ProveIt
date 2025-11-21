@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if users are friends
+    function areFriends(userId) {
+      return isAuthenticated() && 
+             request.auth.uid in get(/databases/$(database)/documents/users/$(userId)).data.friends;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone can read user profiles (needed for search and email checking)
+      allow read: if true;
+      
+      // Only the user can create/update their own profile
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || 
+                      // Allow friend array updates for friend requests
+                      (isAuthenticated() && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friends']));
+      
+      // Goals subcollection
+      match /goals/{goalId} {
+        // Allow reading goals for now - we'll implement proper friend checking in the app logic
+        allow read: if isAuthenticated();
+        
+        // Only owner can write to their goals
+        allow write: if isOwner(userId);
+      }
+    }
+    
+    // Usernames collection - for username lookup
+    match /usernames/{username} {
+      // Anyone can read usernames (needed for availability check and search)
+      allow read: if true;
+      
+      // Allow users to create their own username documents
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Allow users to delete their own username documents (for username changes)
+      allow delete: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid;
+      
+      // Prevent updates to prevent username squatting
+      allow update: if false;
+    }
+    
+    // Friend requests collection
+    match /friendRequests/{requestId} {
+      // Users can read requests they're involved in
+      allow read: if isAuthenticated() && 
+                     (request.auth.uid == resource.data.from || 
+                      request.auth.uid == resource.data.to);
+      
+      // Users can create requests from themselves
+      allow create: if isAuthenticated() && 
+                       request.auth.uid == request.resource.data.from;
+      
+      // Users can update requests they received (accept/decline)
+      allow update: if isAuthenticated() && 
+                       request.auth.uid == resource.data.to;
+      
+      // Users can delete requests they sent (cancel)
+      allow delete: if isAuthenticated() && 
+                       request.auth.uid == resource.data.from;
+    }
+    
+    // Posts collection - friends-only by default
+    match /posts/{postId} {
+      // Users can read their own posts or posts from friends
+      allow read: if isAuthenticated() && 
+                     (request.auth.uid == resource.data.userId || 
+                      areFriends(resource.data.userId));
+      
+      // Users can create their own posts
+      allow create: if isAuthenticated() && 
+                       request.auth.uid == request.resource.data.userId;
+      
+      // Users can update their own posts, and anyone can update reaction counts
+      allow update: if isOwner(resource.data.userId) || 
+                       (isAuthenticated() && 
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']));
+      
+      // Users can delete their own posts
+      allow delete: if isOwner(resource.data.userId);
+      
+      // Interactions subcollection (reactions)
+      match /interactions/{interactionId} {
+        // Allow reading interactions for authenticated users
+        allow read: if isAuthenticated();
+        
+        // Allow authenticated users to add reactions
+        allow create: if isAuthenticated();
+      }
+    }
+  }
+}
+

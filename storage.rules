@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow authenticated users to read and write to posts folder
+    match /posts/{postId}/{fileName} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read and write to user profile images
+    match /users/{userId}/{fileName} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Temporary: Allow all authenticated users to read/write for testing
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
