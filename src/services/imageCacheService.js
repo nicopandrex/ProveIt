@@ -115,9 +115,15 @@ export const clearAllCache = async () => {
   }
 };
 
+/**
+ * Clear cache (alias for clearAllCache for settings screen)
+ */
+export const clearCache = clearAllCache;
+
 export default {
   getCachedSecureImageUrl,
   preloadSecureUrls,
   clearExpiredCache,
-  clearAllCache
+  clearAllCache,
+  clearCache
 };

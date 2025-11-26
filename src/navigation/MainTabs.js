@@ -12,6 +12,7 @@ import CreatePostScreen from '../screens/CreatePostScreen';
 import FriendsScreen from '../screens/FriendsScreen';
 import SearchUsersScreen from '../screens/SearchUsersScreen';
 import EditUsernameScreen from '../screens/EditUsernameScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -50,6 +51,7 @@ function ProfileStack() {
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen name="SearchUsers" component={SearchUsersScreen} />
       <Stack.Screen name="EditUsername" component={EditUsernameScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   );
 }
