@@ -12,12 +12,15 @@ import { preloadSecureUrls } from '../services/imageCacheService';
 import { checkForMissedGoals } from '../services/goalCompletionService';
 import { auth } from '../../firebaseConfig';
 import PostCard from '../components/PostCard';
+import MissedPostCard from '../components/MissedPostCard';
+import TomatoAnimation from '../components/TomatoAnimation';
 
 export default function FeedScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('friends');
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [animationData, setAnimationData] = useState(null);
 
   useEffect(() => {
     // Check for missed goals when feed loads
@@ -74,7 +77,27 @@ export default function FeedScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  const renderPost = ({ item }) => <PostCard post={item} />;
+  const renderPost = ({ item }) => {
+    if (item.type === 'missed_goal') {
+      return (
+        <MissedPostCard
+          post={item}
+          onAnimationStart={(positions, onComplete) => {
+            console.log('FeedScreen received animation start:', positions);
+            setAnimationData({ positions, onComplete });
+          }}
+        />
+      );
+    }
+    return <PostCard post={item} />;
+  };
+
+  const handleAnimationComplete = () => {
+    if (animationData?.onComplete) {
+      animationData.onComplete();
+    }
+    setAnimationData(null);
+  };
 
   const renderEmptyState = () => {
     if (activeTab === 'friends') {
@@ -106,6 +129,18 @@ export default function FeedScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Global Animation Overlay */}
+      {animationData && (
+        <>
+          {console.log('Rendering TomatoAnimation with:', animationData)}
+          <TomatoAnimation
+            startPosition={animationData.positions.start}
+            endPosition={animationData.positions.end}
+            onComplete={handleAnimationComplete}
+          />
+        </>
+      )}
+      
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ProveIt</Text>
         

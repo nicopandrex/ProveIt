@@ -3,7 +3,8 @@ import {
   addDoc, 
   doc, 
   getDoc,
-  updateDoc, 
+  updateDoc,
+  setDoc,
   increment, 
   query, 
   where,
@@ -159,16 +160,70 @@ export const addReaction = async (postId, reactionType, userId) => {
     await updateDoc(postRef, {
       [`reactions.${reactionType}`]: increment(1),
     });
+    
+    // Track users who reacted using setDoc with merge
+    await setDoc(postRef, {
+      reactedUsers: {
+        [reactionType]: {
+          [userId]: true,
+        },
+      },
+    }, { merge: true });
 
     // If tomato reaction, increment user's tomato count
     if (reactionType === 'tomato') {
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, {
-        'stats.tomatoCount': increment(1),
-      });
+      try {
+        const userRef = doc(db, 'users', userId);
+        await setDoc(userRef, {
+          stats: {
+            tomatoCount: increment(1),
+          },
+        }, { merge: true });
+      } catch (userError) {
+        console.error('Failed to update user tomato count:', userError);
+        // Continue even if user update fails
+      }
     }
   } catch (error) {
+    console.error('Add reaction error details:', error);
     throw new Error('Failed to add reaction: ' + error.message);
+  }
+};
+
+export const removeReaction = async (postId, reactionType, userId) => {
+  try {
+    // Update reaction count
+    const postRef = doc(db, 'posts', postId);
+    await updateDoc(postRef, {
+      [`reactions.${reactionType}`]: increment(-1),
+    });
+    
+    // Remove user from reacted users using setDoc with merge
+    await setDoc(postRef, {
+      reactedUsers: {
+        [reactionType]: {
+          [userId]: false,
+        },
+      },
+    }, { merge: true });
+
+    // If tomato reaction, decrement user's tomato count
+    if (reactionType === 'tomato') {
+      try {
+        const userRef = doc(db, 'users', userId);
+        await setDoc(userRef, {
+          stats: {
+            tomatoCount: increment(-1),
+          },
+        }, { merge: true });
+      } catch (userError) {
+        console.error('Failed to update user tomato count:', userError);
+        // Continue even if user update fails
+      }
+    }
+  } catch (error) {
+    console.error('Remove reaction error details:', error);
+    throw new Error('Failed to remove reaction: ' + error.message);
   }
 };
 

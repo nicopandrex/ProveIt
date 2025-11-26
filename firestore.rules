@@ -88,10 +88,10 @@ service cloud.firestore {
       allow create: if isAuthenticated() && 
                        request.auth.uid == request.resource.data.userId;
       
-      // Users can update their own posts, and anyone can update reaction counts
+      // Users can update their own posts, and anyone can update reaction counts and reactedUsers
       allow update: if isOwner(resource.data.userId) || 
                        (isAuthenticated() && 
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']));
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'reactedUsers']));
       
       // Users can delete their own posts
       allow delete: if isOwner(resource.data.userId);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,16 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, getDoc } from 'firebase/firestore';
-import { addReaction } from '../services/postService';
+import { addReaction, removeReaction } from '../services/postService';
 import { getCachedSecureImageUrl } from '../services/imageCacheService';
 import { formatPostTimestamp } from '../utils/timestampUtils';
 import { auth, db } from '../../firebaseConfig';
+import TomatoAnimation from './TomatoAnimation';
 
 export default function PostCard({ post }) {
   const [reactions, setReactions] = useState({
@@ -20,6 +23,18 @@ export default function PostCard({ post }) {
     nudge: post.reactions?.nudge || 0,
     tomato: post.reactions?.tomato || 0,
   });
+  
+  const [hasReactedCheer, setHasReactedCheer] = useState(
+    post.reactedUsers?.cheer?.[auth.currentUser?.uid] || false
+  );
+  
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isCooldown, setIsCooldown] = useState(false);
+  const [animationPositions, setAnimationPositions] = useState(null);
+  
+  const cardRef = useRef(null);
+  const tomatoButtonRef = useRef(null);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
   
   const [secureImageUrl, setSecureImageUrl] = useState(null);
   const [imageLoading, setImageLoading] = useState(false);
@@ -69,6 +84,91 @@ export default function PostCard({ post }) {
       return;
     }
 
+    // Handle cheer toggle
+    if (reactionType === 'cheer') {
+      if (hasReactedCheer) {
+        try {
+          await removeReaction(post.id, reactionType, auth.currentUser.uid);
+          setReactions(prev => ({
+            ...prev,
+            [reactionType]: Math.max(0, prev[reactionType] - 1),
+          }));
+          setHasReactedCheer(false);
+        } catch (error) {
+          Alert.alert('Error', 'Failed to remove reaction');
+        }
+        return;
+      }
+    }
+
+    // Check cooldown for tomato reactions
+    if (reactionType === 'tomato' && isCooldown) {
+      return;
+    }
+
+    // Handle tomato animation
+    if (reactionType === 'tomato') {
+      // Get button and card positions
+      tomatoButtonRef.current?.measureInWindow((bx, by, bw, bh) => {
+        cardRef.current?.measureInWindow((cx, cy, cw, ch) => {
+          const screenHeight = Dimensions.get('window').height;
+          const screenWidth = Dimensions.get('window').width;
+          
+          console.log('Card position:', { cx, cy, cw, ch });
+          
+          // Calculate positions
+          const startPos = {
+            x: screenWidth - 80, // Bottom right of screen
+            y: screenHeight - 120, // Bottom right of screen
+          };
+          const endPos = {
+            x: cx + cw / 2 - 30, // Center of card horizontally (using actual card position)
+            y: cy + ch / 2 - 30, // Center of card vertically (using actual card position)
+          };
+
+          setAnimationPositions({ start: startPos, end: endPos });
+          setIsAnimating(true);
+          setIsCooldown(true);
+
+          // Trigger shake effect after 800ms (when tomato hits)
+          setTimeout(() => {
+            Animated.sequence([
+              Animated.timing(shakeAnim, {
+                toValue: 8,
+                duration: 50,
+                useNativeDriver: true,
+              }),
+              Animated.timing(shakeAnim, {
+                toValue: -8,
+                duration: 50,
+                useNativeDriver: true,
+              }),
+              Animated.timing(shakeAnim, {
+                toValue: 8,
+                duration: 50,
+                useNativeDriver: true,
+              }),
+              Animated.timing(shakeAnim, {
+                toValue: -8,
+                duration: 50,
+                useNativeDriver: true,
+              }),
+              Animated.timing(shakeAnim, {
+                toValue: 0,
+                duration: 50,
+                useNativeDriver: true,
+              }),
+            ]).start();
+          }, 800);
+
+          // Cooldown timer (3 seconds)
+          setTimeout(() => {
+            setIsCooldown(false);
+          }, 3000);
+        });
+      });
+    }
+
     try {
       await addReaction(post.id, reactionType, auth.currentUser.uid);
 
@@ -77,9 +177,19 @@ export default function PostCard({ post }) {
         ...prev,
         [reactionType]: prev[reactionType] + 1,
       }));
+      
+      if (reactionType === 'cheer') {
+        setHasReactedCheer(true);
+      }
     } catch (error) {
+      console.error('Add reaction error:', error);
       Alert.alert('Error', 'Failed to add reaction');
     }
+  };
+
+  const handleAnimationComplete = () => {
+    setIsAnimating(false);
+    setAnimationPositions(null);
   };
 
   const renderPostContent = () => {
@@ -168,7 +278,18 @@ export default function PostCard({ post }) {
   const availableReactions = getAvailableReactions();
 
   return (
-    <View style={styles.container}>
+    <View style={styles.outerContainer}>
+      {/* Tomato Animation Overlay - Above everything */}
+      {isAnimating && animationPositions && (
+        <TomatoAnimation
+          startPosition={animationPositions.start}
+          endPosition={animationPositions.end}
+          onComplete={handleAnimationComplete}
+        />
+      )}
+      
+      <Animated.View style={[styles.container, { transform: [{ translateX: shakeAnim }] }]} ref={cardRef}>
+
       <View style={styles.postHeader}>
         <View style={styles.userInfo}>
           <View style={styles.avatar}>
@@ -191,33 +312,46 @@ export default function PostCard({ post }) {
         {availableReactions.map((reaction) => (
           <TouchableOpacity
             key={reaction}
-            style={styles.reactionButton}
+            ref={reaction === 'tomato' ? tomatoButtonRef : null}
+            style={[
+              styles.reactionButton,
+              reaction === 'tomato' && isCooldown && styles.reactionButtonDisabled,
+            ]}
             onPress={() => handleReaction(reaction)}
+            disabled={reaction === 'tomato' && isCooldown}
           >
-            <Ionicons
-              name={
-                reaction === 'cheer' ? 'heart' :
-                reaction === 'nudge' ? 'notifications' :
-                'nutrition'
-              }
-              size={20}
-              color={
-                reaction === 'cheer' ? '#ff6b6b' :
-                reaction === 'nudge' ? '#4ecdc4' :
-                '#ffa726'
-              }
-            />
-            <Text style={styles.reactionCount}>
+            {reaction === 'cheer' ? (
+              <Text style={styles.emojiIcon}>{hasReactedCheer ? '❤️' : '🤍'}</Text>
+            ) : (
+              <Ionicons
+                name={
+                  reaction === 'nudge' ? 'notifications' : 'nutrition'
+                }
+                size={20}
+                color={
+                  reaction === 'nudge' ? '#4ecdc4' : '#ffa726'
+                }
+                style={reaction === 'tomato' && isCooldown && styles.disabledIcon}
+              />
+            )}
+            <Text style={[
+              styles.reactionCount,
+              reaction === 'tomato' && isCooldown && styles.disabledText,
+            ]}>
               {reactions[reaction]}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  outerContainer: {
+    position: 'relative',
+  },
   container: {
     backgroundColor: '#1a1a1a',
     marginHorizontal: 16,
@@ -325,5 +459,17 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 14,
     marginLeft: 4,
+  },
+  emojiIcon: {
+    fontSize: 20,
+  },
+  reactionButtonDisabled: {
+    opacity: 0.5,
+  },
+  disabledIcon: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    opacity: 0.5,
   },
 });
