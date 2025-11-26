@@ -8,6 +8,7 @@ import {
   Alert,
   Animated,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, getDoc } from 'firebase/firestore';
@@ -38,12 +39,18 @@ export default function PostCard({ post }) {
   
   const [secureImageUrl, setSecureImageUrl] = useState(null);
   const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [goalTitle, setGoalTitle] = useState(null);
+  const [goalTitleLoading, setGoalTitleLoading] = useState(false);
+  const [contentReady, setContentReady] = useState(false);
+  const MAX_RETRIES = 3;
 
   // Fetch goal title if this is a proof post
   useEffect(() => {
     const fetchGoalTitle = async () => {
       if (post.goalId && post.userId) {
+        setGoalTitleLoading(true);
         try {
           const goalRef = doc(db, 'users', post.userId, 'goals', post.goalId);
           const goalSnap = await getDoc(goalRef);
@@ -52,31 +59,55 @@ export default function PostCard({ post }) {
           }
         } catch (error) {
           console.error('Failed to fetch goal title:', error);
+        } finally {
+          setGoalTitleLoading(false);
         }
+      } else if (post.type !== 'proof_post') {
+        // Non-proof posts don't need goal title
+        setGoalTitleLoading(false);
       }
     };
 
     fetchGoalTitle();
-  }, [post.goalId, post.userId]);
+  }, [post.goalId, post.userId, post.type]);
 
-  // Fetch secure image URL with ultra-fast caching
+  // Fetch secure image URL with ultra-fast caching and retry
   useEffect(() => {
     const fetchSecureImageUrl = async () => {
       if (post.type === 'proof_post' && post.imageUrl && post.id) {
+        setImageLoading(true);
         try {
-          // Use the optimized caching service
           const secureUrl = await getCachedSecureImageUrl(post.id);
           setSecureImageUrl(secureUrl);
+          setImageError(false);
         } catch (error) {
           console.error('Failed to get secure image URL:', error);
-          // Fallback to original URL if secure URL fails
           setSecureImageUrl(post.imageUrl);
+          setImageError(true);
+        } finally {
+          setImageLoading(false);
         }
+      } else if (post.type !== 'proof_post') {
+        // Non-proof posts don't need images
+        setImageLoading(false);
       }
     };
 
     fetchSecureImageUrl();
-  }, [post.id, post.type, post.imageUrl]);
+  }, [post.id, post.type, post.imageUrl, retryCount]);
+
+  // Check if content is ready to display (for proof posts)
+  useEffect(() => {
+    if (post.type === 'proof_post') {
+      // For proof posts, wait for both goal title and image
+      const titleReady = !goalTitleLoading && (goalTitle || !post.goalId);
+      const imageReady = !imageLoading && (secureImageUrl || !post.imageUrl);
+      setContentReady(titleReady && imageReady);
+    } else {
+      // Other post types are always ready
+      setContentReady(true);
+    }
+  }, [post.type, goalTitleLoading, goalTitle, post.goalId, imageLoading, secureImageUrl, post.imageUrl]);
 
   const handleReaction = async (reactionType) => {
     if (!auth.currentUser) {
@@ -202,9 +233,20 @@ export default function PostCard({ post }) {
         );
       
       case 'proof_post':
+        // Show loading until both title and image are ready
+        if (!contentReady) {
+          return (
+            <View style={styles.postContent}>
+              <View style={[styles.postImage, styles.loadingContainer]}>
+                <ActivityIndicator size="large" color="#4ecdc4" />
+              </View>
+            </View>
+          );
+        }
+        
         return (
           <View style={styles.postContent}>
-            {goalTitle && (
+            {post.goalId && goalTitle && (
               <View style={styles.goalCompletionBanner}>
                 <Ionicons name="checkmark-circle" size={20} color="#4ecdc4" />
                 <Text style={styles.goalCompletionText}>
@@ -212,24 +254,24 @@ export default function PostCard({ post }) {
                 </Text>
               </View>
             )}
-            {post.imageUrl && (
+            {post.imageUrl && secureImageUrl && (
               <View style={styles.imageContainer}>
-                {imageLoading ? (
-                  <View style={[styles.postImage, styles.loadingContainer]}>
-                    <Text style={styles.loadingText}>Loading image...</Text>
-                  </View>
-                ) : secureImageUrl ? (
-                  <Image 
-                    source={{ uri: secureImageUrl }} 
-                    style={styles.postImage}
-                    onError={() => {
-                      console.error('Failed to load secure image, falling back to original');
+                <Image 
+                  source={{ uri: secureImageUrl }} 
+                  style={styles.postImage}
+                  onError={() => {
+                    if (retryCount < MAX_RETRIES && !imageError) {
+                      console.log(`Image load failed, retry ${retryCount + 1}/${MAX_RETRIES}`);
+                      setTimeout(() => {
+                        setRetryCount(prev => prev + 1);
+                      }, 1000 * (retryCount + 1));
+                    } else {
+                      console.error('Failed to load secure image after retries, using fallback');
                       setSecureImageUrl(post.imageUrl);
-                    }}
-                  />
-                ) : (
-                  <Image source={{ uri: post.imageUrl }} style={styles.postImage} />
-                )}
+                      setImageError(true);
+                    }
+                  }}
+                />
               </View>
             )}
             {post.caption && (
@@ -433,13 +475,9 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   loadingContainer: {
-    backgroundColor: '#333',
+    backgroundColor: '#1a1a1a',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  loadingText: {
-    color: '#999',
-    fontSize: 14,
   },
   caption: {
     color: '#ccc',

@@ -8,7 +8,6 @@ import {
   RefreshControl,
 } from 'react-native';
 import { getFriendsPosts, getMyPosts } from '../services/postService';
-import { preloadSecureUrls } from '../services/imageCacheService';
 import { checkForMissedGoals } from '../services/goalCompletionService';
 import { auth } from '../../firebaseConfig';
 import PostCard from '../components/PostCard';
@@ -23,12 +22,17 @@ export default function FeedScreen({ navigation }) {
   const [animationData, setAnimationData] = useState(null);
 
   useEffect(() => {
-    // Check for missed goals when feed loads
-    if (auth.currentUser) {
-      checkForMissedGoals(auth.currentUser.uid).catch(error => {
-        console.warn('Failed to check missed goals:', error);
-      });
+    // Don't load posts if user is not authenticated
+    if (!auth.currentUser) {
+      setPosts([]);
+      setLoading(false);
+      return;
     }
+
+    // Check for missed goals when feed loads
+    checkForMissedGoals(auth.currentUser.uid).catch(error => {
+      console.warn('Failed to check missed goals:', error);
+    });
     
     let unsubscribe;
 
@@ -36,28 +40,36 @@ export default function FeedScreen({ navigation }) {
       setLoading(true);
       
       if (activeTab === 'friends') {
-        unsubscribe = await getFriendsPosts(auth.currentUser.uid, async (postsData) => {
-          setPosts(postsData);
+        unsubscribe = await getFriendsPosts(auth.currentUser.uid, (postsData) => {
+          // Sort posts in reverse chronological order (most recent first)
+          const sortedPosts = postsData.sort((a, b) => {
+            // Handle Firestore Timestamp objects properly
+            const getTime = (post) => {
+              if (post.timestamp?.toDate) return post.timestamp.toDate().getTime();
+              if (post.timestamp?.seconds) return post.timestamp.seconds * 1000;
+              if (post.timestamp instanceof Date) return post.timestamp.getTime();
+              return 0;
+            };
+            return getTime(b) - getTime(a);
+          });
+          setPosts(sortedPosts);
           setLoading(false);
-          
-          // Preload secure URLs for faster image loading
-          if (postsData.length > 0) {
-            preloadSecureUrls(postsData).catch(error => {
-              console.warn('Failed to preload some images:', error);
-            });
-          }
         });
       } else {
-        unsubscribe = getMyPosts(auth.currentUser.uid, async (postsData) => {
-          setPosts(postsData);
+        unsubscribe = getMyPosts(auth.currentUser.uid, (postsData) => {
+          // Sort posts in reverse chronological order (most recent first)
+          const sortedPosts = postsData.sort((a, b) => {
+            // Handle Firestore Timestamp objects properly
+            const getTime = (post) => {
+              if (post.timestamp?.toDate) return post.timestamp.toDate().getTime();
+              if (post.timestamp?.seconds) return post.timestamp.seconds * 1000;
+              if (post.timestamp instanceof Date) return post.timestamp.getTime();
+              return 0;
+            };
+            return getTime(b) - getTime(a);
+          });
+          setPosts(sortedPosts);
           setLoading(false);
-          
-          // Preload secure URLs for faster image loading
-          if (postsData.length > 0) {
-            preloadSecureUrls(postsData).catch(error => {
-              console.warn('Failed to preload some images:', error);
-            });
-          }
         });
       }
     };
