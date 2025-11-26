@@ -146,6 +146,28 @@ export const getPresignedImageUrl = async (postId, fileName = 'proof.jpg', expir
   }
 };
 
+/**
+ * Generate a presigned URL for an arbitrary key (useful for user profile images)
+ * @param {string} key - Full S3 key (e.g., 'users/{userId}/profile.jpg')
+ * @param {number} expiresIn - URL expiration time in seconds
+ * @returns {Promise<string>} - Pre-signed URL
+ */
+export const getPresignedUrlForKey = async (key, expiresIn = 7200) => {
+  try {
+    const params = {
+      Bucket: s3Config.bucketName,
+      Key: key,
+      Expires: expiresIn
+    };
+
+    const url = await s3.getSignedUrlPromise('getObject', params);
+    return url;
+  } catch (error) {
+    console.error('Generate presigned URL for key error:', error);
+    throw new Error('Failed to generate presigned URL: ' + error.message);
+  }
+};
+
 export default {
   uploadImageToS3,
   deleteImageFromS3,

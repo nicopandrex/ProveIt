@@ -12,6 +12,8 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
+import { invalidateUserCache } from './userCacheService';
+import { emitAvatarUpdated } from './avatarEvents';
 
 /**
  * Validate username format
@@ -234,6 +236,33 @@ export const getUserById = async (userId) => {
   } catch (error) {
     console.error('Error getting user by ID:', error);
     throw new Error('Failed to get user');
+  }
+};
+
+/**
+ * Update the user's profile photo path on their user document
+ * @param {string} userId
+ * @param {string} photoPath - S3 key (e.g., 'users/{userId}/profile.jpg')
+ */
+export const updateProfilePhoto = async (userId, photoPath) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      photoPath,
+      photoUpdatedAt: new Date()
+    });
+    // Invalidate local cache so clients fetch the new photo next time
+    try {
+      invalidateUserCache(userId);
+      // Notify any UI components that a user's avatar changed so they can re-fetch
+      try { emitAvatarUpdated(userId); } catch (e) { console.warn('emitAvatarUpdated failed', e); }
+    } catch (e) {
+      console.warn('Failed to invalidate user cache after profile update:', e);
+    }
+    return true;
+  } catch (error) {
+    console.error('Error updating profile photo:', error);
+    throw new Error('Failed to update profile photo');
   }
 };
 

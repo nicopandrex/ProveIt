@@ -19,6 +19,7 @@ import {
   cancelFriendRequest
 } from '../services/friendService';
 import { auth } from '../../firebaseConfig';
+import Avatar from '../components/Avatar';
 
 export default function FriendsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('friends');
@@ -113,11 +114,7 @@ export default function FriendsScreen({ navigation }) {
 
   const renderFriend = ({ item }) => (
     <View style={styles.itemContainer}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {item.displayName?.charAt(0) || 'U'}
-        </Text>
-      </View>
+      <Avatar userId={item.id} displayName={item.displayName} photoPath={item.photoPath} size={50} style={styles.avatar} />
       
       <View style={styles.itemInfo}>
         <Text style={styles.displayName}>{item.displayName}</Text>
@@ -137,11 +134,7 @@ export default function FriendsScreen({ navigation }) {
 
   const renderReceivedRequest = ({ item }) => (
     <View style={styles.itemContainer}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {item.fromDisplayName?.charAt(0) || 'U'}
-        </Text>
-      </View>
+      <Avatar userId={item.fromId || item.fromUserId || item.from} displayName={item.fromDisplayName} photoPath={item.photoPath || item.fromPhotoPath} size={50} style={styles.avatar} />
       
       <View style={styles.itemInfo}>
         <Text style={styles.displayName}>{item.fromDisplayName}</Text>
@@ -170,9 +163,7 @@ export default function FriendsScreen({ navigation }) {
 
   const renderSentRequest = ({ item }) => (
     <View style={styles.itemContainer}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>U</Text>
-      </View>
+      <Avatar userId={item.toId || item.toUserId || item.to || item.id} displayName={item.displayName || 'User'} photoPath={item.photoPath || item.toPhotoPath} size={50} style={styles.avatar} />
       
       <View style={styles.itemInfo}>
         <Text style={styles.displayName}>Request sent</Text>

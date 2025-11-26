@@ -14,6 +14,7 @@ import { searchUsers } from '../services/userService';
 import { sendFriendRequest, getFriendRequestStatus } from '../services/friendService';
 import { getUserById } from '../services/userService';
 import { auth } from '../../firebaseConfig';
+import Avatar from '../components/Avatar';
 
 export default function SearchUsersScreen({ navigation }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -98,11 +99,7 @@ export default function SearchUsersScreen({ navigation }) {
     
     return (
       <View style={styles.userItem}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {item.displayName?.charAt(0) || 'U'}
-          </Text>
-        </View>
+        <Avatar userId={item.id} displayName={item.displayName} photoPath={item.photoPath} size={50} style={styles.avatar} />
         
         <View style={styles.userInfo}>
           <Text style={styles.displayName}>{item.displayName}</Text>

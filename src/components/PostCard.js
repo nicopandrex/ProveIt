@@ -17,6 +17,7 @@ import { getCachedSecureImageUrl } from '../services/imageCacheService';
 import { formatPostTimestamp } from '../utils/timestampUtils';
 import { auth, db } from '../../firebaseConfig';
 import TomatoAnimation from './TomatoAnimation';
+import Avatar from './Avatar';
 
 export default function PostCard({ post }) {
   const [reactions, setReactions] = useState({
@@ -334,11 +335,7 @@ export default function PostCard({ post }) {
 
       <View style={styles.postHeader}>
         <View style={styles.userInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {post.userDisplayName?.charAt(0) || 'U'}
-            </Text>
-          </View>
+          <Avatar userId={post.userId} displayName={post.userDisplayName} size={40} style={styles.avatar} />
           <View>
             <Text style={styles.userName}>{post.userDisplayName || 'User'}</Text>
             <Text style={styles.timestamp}>

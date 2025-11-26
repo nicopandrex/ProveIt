@@ -13,6 +13,7 @@ import { addReaction, removeReaction } from '../services/postService';
 import { formatPostTimestamp } from '../utils/timestampUtils';
 import { auth } from '../../firebaseConfig';
 import TomatoAnimation from './TomatoAnimation';
+import Avatar from './Avatar';
 
 export default function MissedPostCard({ post, onAnimationStart }) {
   const [reactions, setReactions] = useState({
@@ -141,11 +142,7 @@ export default function MissedPostCard({ post, onAnimationStart }) {
       <Animated.View style={[styles.container, { transform: [{ translateX: shakeAnim }] }]} ref={cardRef}>
         <View style={styles.postHeader}>
           <View style={styles.userInfo}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {post.userDisplayName?.charAt(0) || 'U'}
-              </Text>
-            </View>
+              <Avatar userId={post.userId} displayName={post.userDisplayName} size={40} style={styles.avatar} />
             <View>
               <Text style={styles.userName}>{post.userDisplayName || 'User'}</Text>
               <Text style={styles.timestamp}>

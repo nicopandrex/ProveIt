@@ -6,16 +6,28 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { signOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
+import Avatar from '../components/Avatar';
+import ImageCropper from '../components/ImageCropper';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { uploadProfileImageToS3 } from '../services/s3Service';
+import { updateProfilePhoto } from '../services/userService';
+import { clearCacheForKey } from '../services/imageCacheService';
 
 export default function ProfileScreen({ navigation }) {
   const [user, setUser] = useState(null);
   const [userStats, setUserStats] = useState(null);
   const [friendCount, setFriendCount] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [cropperVisible, setCropperVisible] = useState(false);
+  const [pickedUri, setPickedUri] = useState(null);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -35,6 +47,78 @@ export default function ProfileScreen({ navigation }) {
 
     return unsubscribe;
   }, []);
+
+  const handleChangePhoto = async () => {
+    if (!auth.currentUser) return Alert.alert('Not signed in');
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        return Alert.alert('Permission required', 'We need access to your photos to change your profile picture.');
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.9,
+      });
+
+      // Handle both Expo SDK shapes: legacy { cancelled, uri, width, height } and new { assets: [{ uri, width, height }] }
+      let picked;
+      if (result.cancelled === false && result.assets == null && result.uri) {
+        picked = result;
+      } else if (result.assets && result.assets.length > 0) {
+        picked = result.assets[0];
+      } else {
+        // user cancelled or unknown shape
+        return;
+      }
+
+      const { uri } = picked;
+      if (!uri || typeof uri !== 'string') {
+        throw new Error('No valid image URI returned from picker');
+      }
+
+      // Open cropper modal so the user can position/zoom inside a circular frame
+      setPickedUri(uri);
+      setCropperVisible(true);
+    } catch (error) {
+      console.error('Profile photo update error:', error);
+      Alert.alert('Error', 'Failed to update profile photo.');
+    } finally {
+      // uploading will be cleared after the crop/upload flow completes
+    }
+  };
+
+  const handleCropCancel = () => {
+    setCropperVisible(false);
+    setPickedUri(null);
+  };
+
+  const handleCropped = async (croppedUri) => {
+    setCropperVisible(false);
+    setPickedUri(null);
+    if (!croppedUri) return;
+
+    setUploading(true);
+    try {
+      const uid = auth.currentUser.uid;
+      // Upload to S3 under users/{uid}/profile.jpg
+      await uploadProfileImageToS3(croppedUri, uid, 'profile.jpg');
+
+      const s3Key = `users/${uid}/profile.jpg`;
+
+      // Update Firestore user doc with photoPath
+      await updateProfilePhoto(uid, s3Key);
+
+      // Clear cached presigned URL for this user's profile key
+      await clearCacheForKey(s3Key);
+
+      Alert.alert('Profile Updated', 'Your profile picture has been updated.');
+    } catch (err) {
+      console.error('Upload/crop error:', err);
+      Alert.alert('Error', 'Failed to upload new profile photo.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -58,13 +142,24 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ImageCropper visible={cropperVisible} imageUri={pickedUri} onCancel={handleCropCancel} onCrop={handleCropped} />
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {user?.displayName?.charAt(0) || 'U'}
-          </Text>
+        <View style={styles.avatarWrapper}>
+          <TouchableOpacity onPress={handleChangePhoto} disabled={uploading} accessibilityLabel="Change profile photo">
+            <Avatar userId={auth.currentUser?.uid} displayName={user?.displayName} photoPath={user?.photoPath} size={80} style={styles.avatar} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleChangePhoto}
+            disabled={uploading}
+            accessibilityLabel="Change profile photo"
+            style={styles.cameraOverlay}
+          >
+            <Ionicons name="camera" size={14} color="#222" />
+          </TouchableOpacity>
         </View>
+        {uploading && <ActivityIndicator style={{ marginTop: 8 }} />}
         <Text style={styles.userName}>{user?.displayName || 'User'}</Text>
         {user?.username ? (
           <Text style={styles.username}>@{user.usernameDisplay || user.username}</Text>
@@ -150,7 +245,8 @@ export default function ProfileScreen({ navigation }) {
           <Text style={[styles.actionText, styles.signOutText]}>Sign Out</Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -161,10 +257,18 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 30,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    backgroundColor: '#000',
   },
   avatar: {
     width: 80,
@@ -214,6 +318,32 @@ const styles = StyleSheet.create({
   userEmail: {
     fontSize: 16,
     color: '#999',
+  },
+  avatarWrapper: {
+    position: 'relative',
+    width: 80,
+    height: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  cameraOverlay: {
+    position: 'absolute',
+    right: 6,
+    bottom: 6,
+    width: 26,
+    height: 26,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.12)',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
   },
   statsContainer: {
     padding: 20,
