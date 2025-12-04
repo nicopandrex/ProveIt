@@ -11,6 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { doc, setDoc, collection } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 import { createPost } from '../services/postService';
@@ -19,8 +20,33 @@ import { isPastDueTime } from '../services/goalCompletionService';
 export default function CreateGoalScreen({ navigation }) {
   const [title, setTitle] = useState('');
   const [frequency, setFrequency] = useState('daily');
-  const [dueTime, setDueTime] = useState('6:00 PM');
+  
+  // Initialize with 6:00 PM
+  const initialDate = new Date();
+  initialDate.setHours(18, 0, 0, 0);
+  
+  const [dueTimeDate, setDueTimeDate] = useState(initialDate);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const formatTime = (date) => {
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+    return `${hours}:${minutesStr} ${ampm}`;
+  };
+
+  const onTimeChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
+    if (selectedDate) {
+      setDueTimeDate(selectedDate);
+    }
+  };
 
   const handleCreateGoal = async () => {
     if (!title.trim()) {
@@ -40,7 +66,7 @@ export default function CreateGoalScreen({ navigation }) {
       await setDoc(goalRef, {
         title: title.trim(),
         frequency,
-        dueTime,
+        dueTime: formatTime(dueTimeDate),
         completedDates: [],
         currentStreak: 0,
         longestStreak: 0,
@@ -132,16 +158,35 @@ export default function CreateGoalScreen({ navigation }) {
           </View>
 
           <Text style={styles.label}>Due Time</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="6:00 PM"
-            value={dueTime}
-            onChangeText={setDueTime}
-            keyboardType="default"
-          />
-          <Text style={styles.helpText}>
-            Enter time in 12-hour format (e.g., 6:00 PM)
-          </Text>
+          <TouchableOpacity
+            style={styles.timePickerButton}
+            onPress={() => setShowTimePicker(true)}
+          >
+            <Ionicons name="time-outline" size={24} color="#4ecdc4" />
+            <Text style={styles.timePickerText}>{formatTime(dueTimeDate)}</Text>
+            <Ionicons name="chevron-down" size={24} color="#999" />
+          </TouchableOpacity>
+
+          {showTimePicker && (
+            <DateTimePicker
+              value={dueTimeDate}
+              mode="time"
+              is24Hour={false}
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onTimeChange}
+              textColor="#fff"
+              style={styles.timePicker}
+            />
+          )}
+
+          {Platform.OS === 'ios' && showTimePicker && (
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => setShowTimePicker(false)}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <TouchableOpacity
@@ -232,6 +277,38 @@ const styles = StyleSheet.create({
   },
   frequencyButtonTextActive: {
     color: '#000',
+  },
+  timePickerButton: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  timePickerText: {
+    color: '#fff',
+    fontSize: 16,
+    flex: 1,
+    marginLeft: 12,
+  },
+  timePicker: {
+    backgroundColor: '#1a1a1a',
+    marginTop: 8,
+  },
+  doneButton: {
+    backgroundColor: '#4ecdc4',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  doneButtonText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '600',
   },
   helpText: {
     fontSize: 12,
