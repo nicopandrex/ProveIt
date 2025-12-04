@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,10 +22,37 @@ export default function SearchUsersScreen({ navigation }) {
   const [searching, setSearching] = useState(false);
   const [requestStatuses, setRequestStatuses] = useState({});
   const [sendingRequests, setSendingRequests] = useState({});
+  const searchTimeoutRef = useRef(null);
+
+  // Auto-search with debounce when searchTerm changes
+  useEffect(() => {
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Don't search if less than 1 character
+    if (!searchTerm || searchTerm.trim().length < 1) {
+      setResults([]);
+      setRequestStatuses({});
+      return;
+    }
+
+    // Set new timeout for search (500ms delay)
+    searchTimeoutRef.current = setTimeout(() => {
+      handleSearch();
+    }, 500);
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchTerm]);
 
   const handleSearch = async () => {
-    if (!searchTerm || searchTerm.trim().length < 2) {
-      Alert.alert('Invalid Search', 'Please enter at least 2 characters');
+    if (!searchTerm || searchTerm.trim().length < 1) {
       return;
     }
 
@@ -42,7 +69,8 @@ export default function SearchUsersScreen({ navigation }) {
       }
       setRequestStatuses(statuses);
     } catch (error) {
-      Alert.alert('Search Failed', error.message);
+      console.error('Search error:', error);
+      // Don't show alert for auto-search errors
     } finally {
       setSearching(false);
     }
