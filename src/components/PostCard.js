@@ -153,14 +153,14 @@ export default function PostCard({ post }) {
           
           console.log('Card position:', { cx, cy, cw, ch });
           
-          // Calculate positions
+          // Calculate positions RELATIVE to the card container, not screen
           const startPos = {
-            x: screenWidth - 80, // Bottom right of screen
-            y: screenHeight - 120, // Bottom right of screen
+            x: screenWidth - cx - 80, // Bottom right relative to card
+            y: screenHeight - cy - 120, // Bottom right relative to card
           };
           const endPos = {
-            x: cx + cw / 2 - 30, // Center of card horizontally (using actual card position)
-            y: cy + ch / 2 - 30, // Center of card vertically (using actual card position)
+            x: cw / 2 - 30, // Center of card (card-relative)
+            y: ch / 2 - 30, // Center of card (card-relative)
           };
 
           setAnimationPositions({ start: startPos, end: endPos });
@@ -232,9 +232,16 @@ export default function PostCard({ post }) {
   const renderPostContent = () => {
     switch (post.type) {
       case 'goal_created':
+        // Extract goal title from message (e.g., "Nico committed to: go crazy" -> "go crazy")
+        const commitmentTitle = post.message?.split(': ')[1] || post.message;
         return (
           <View style={styles.postContent}>
-            <Text style={styles.postText}>{post.message}</Text>
+            <View style={styles.goalCommitmentBanner}>
+              <Ionicons name="rocket" size={20} color="#4ecdc4" />
+              <Text style={styles.goalCommitmentText}>
+                committed to: {commitmentTitle}
+              </Text>
+            </View>
           </View>
         );
       
@@ -252,7 +259,7 @@ export default function PostCard({ post }) {
         
         return (
           <View style={styles.postContent}>
-            {post.goalId && goalTitle && (
+            {goalTitle && (
               <View style={styles.goalCompletionBanner}>
                 <Ionicons name="checkmark-circle" size={20} color="#4ecdc4" />
                 <Text style={styles.goalCompletionText}>
@@ -287,9 +294,16 @@ export default function PostCard({ post }) {
         );
       
       case 'missed_goal':
+        // Extract goal title from message if present
+        const missedTitle = post.message?.split(': ')[1] || post.message?.replace('Missed goal: ', '') || 'a goal';
         return (
           <View style={styles.postContent}>
-            <Text style={[styles.postText, styles.missedText]}>{post.message}</Text>
+            <View style={styles.goalMissedBanner}>
+              <Ionicons name="close-circle" size={20} color="#ff6b6b" />
+              <Text style={styles.goalMissedText}>
+                missed: {missedTitle}
+              </Text>
+            </View>
           </View>
         );
       
@@ -454,6 +468,34 @@ const styles = StyleSheet.create({
   },
   goalCompletionText: {
     color: '#4ecdc4',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
+    flex: 1,
+  },
+  goalCommitmentBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+    padding: 12,
+    borderRadius: 8,
+  },
+  goalCommitmentText: {
+    color: '#4ecdc4',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
+    flex: 1,
+  },
+  goalMissedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+    padding: 12,
+    borderRadius: 8,
+  },
+  goalMissedText: {
+    color: '#ff6b6b',
     fontSize: 15,
     fontWeight: '600',
     marginLeft: 8,

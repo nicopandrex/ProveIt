@@ -140,7 +140,11 @@ export default function TomatoAnimation({ startPosition, endPosition, onComplete
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     zIndex: 9999,
     elevation: 9999, // For Android
     pointerEvents: 'none',
