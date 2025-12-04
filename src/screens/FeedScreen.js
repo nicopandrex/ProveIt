@@ -13,6 +13,7 @@ import { auth } from '../../firebaseConfig';
 import PostCard from '../components/PostCard';
 import MissedPostCard from '../components/MissedPostCard';
 import TomatoAnimation from '../components/TomatoAnimation';
+import PostSkeleton from '../components/PostSkeleton';
 
 export default function FeedScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('friends');
@@ -178,9 +179,9 @@ export default function FeedScreen({ navigation }) {
       </View>
       
       <FlatList
-        data={posts}
-        renderItem={renderPost}
-        keyExtractor={(item) => item.id}
+        data={loading ? [1, 2, 3] : posts}
+        renderItem={loading ? () => <PostSkeleton /> : renderPost}
+        keyExtractor={(item) => loading ? `skeleton-${item}` : item.id}
         style={styles.feed}
         ListEmptyComponent={!loading && renderEmptyState}
         refreshControl={
