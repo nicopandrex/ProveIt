@@ -78,7 +78,7 @@ export default function LoginScreen({ navigation }) {
           
           <TouchableOpacity 
             style={styles.linkButton}
-            onPress={() => navigation.navigate('Register')}
+            onPress={() => navigation.navigate('Welcome')}
           >
             <Text style={styles.linkText}>
               Don't have an account? Sign up

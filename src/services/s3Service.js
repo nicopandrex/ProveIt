@@ -84,14 +84,15 @@ export const deleteImageFromS3 = async (postId, fileName = 'proof.jpg') => {
 
 /**
  * Upload user profile image to S3
- * @param {string} imageUri - Local image URI
  * @param {string} userId - User ID
+ * @param {string} imageUri - Local image URI
  * @param {string} fileName - File name (optional)
- * @returns {Promise<string>} - S3 URL of uploaded image
+ * @returns {Promise<string>} - S3 key path (not full URL)
  */
-export const uploadProfileImageToS3 = async (imageUri, userId, fileName = 'profile.jpg') => {
+export const uploadProfileImageToS3 = async (userId, imageUri, fileName = 'profile.jpg') => {
   try {
     console.log('Starting S3 profile upload for user:', userId);
+    console.log('Image URI:', imageUri);
     
     // Fetch the image
     const response = await fetch(imageUri);
@@ -102,6 +103,8 @@ export const uploadProfileImageToS3 = async (imageUri, userId, fileName = 'profi
     // Get the response as array buffer directly
     const arrayBuffer = await response.arrayBuffer();
     const buffer = new Uint8Array(arrayBuffer);
+    
+    console.log('Profile image buffer size:', buffer.length, 'bytes');
     
     // S3 upload parameters
     const uploadParams = {
@@ -116,7 +119,8 @@ export const uploadProfileImageToS3 = async (imageUri, userId, fileName = 'profi
     const result = await s3.upload(uploadParams).promise();
     console.log('S3 profile upload successful:', result.Location);
     
-    return result.Location;
+    // Return the S3 key path, not the full URL
+    return `users/${userId}/${fileName}`;
   } catch (error) {
     console.error('S3 profile upload error:', error);
     throw new Error('Failed to upload profile image to S3: ' + error.message);
