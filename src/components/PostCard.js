@@ -17,6 +17,7 @@ import { getCachedSecureImageUrl } from '../services/imageCacheService';
 import { formatPostTimestamp } from '../utils/timestampUtils';
 import { auth, db } from '../../firebaseConfig';
 import TomatoAnimation from './TomatoAnimation';
+import HeartAnimation from './HeartAnimation';
 import Avatar from './Avatar';
 
 export default function PostCard({ post }) {
@@ -33,6 +34,7 @@ export default function PostCard({ post }) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isCooldown, setIsCooldown] = useState(false);
   const [animationPositions, setAnimationPositions] = useState(null);
+  const [showHeartAnimation, setShowHeartAnimation] = useState(false);
   
   const cardRef = useRef(null);
   const tomatoButtonRef = useRef(null);
@@ -130,6 +132,9 @@ export default function PostCard({ post }) {
           Alert.alert('Error', 'Failed to remove reaction');
         }
         return;
+      } else {
+        // Trigger heart animation when liking
+        setShowHeartAnimation(true);
       }
     }
 
@@ -329,6 +334,11 @@ export default function PostCard({ post }) {
           endPosition={animationPositions.end}
           onComplete={handleAnimationComplete}
         />
+      )}
+      
+      {/* Heart Animation Overlay - When user likes a post */}
+      {showHeartAnimation && (
+        <HeartAnimation onComplete={() => setShowHeartAnimation(false)} />
       )}
       
       <Animated.View style={[styles.container, { transform: [{ translateX: shakeAnim }] }]} ref={cardRef}>
