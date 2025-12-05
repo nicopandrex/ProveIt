@@ -15,7 +15,7 @@ import { checkForMissedGoals } from '../services/goalCompletionService';
 import { auth, db } from '../../firebaseConfig';
 import CameraView from '../components/CameraView';
 
-export default function CaptureScreen({ navigation }) {
+export default function CaptureScreen({ navigation, route }) {
   const [goals, setGoals] = useState([]);
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [image, setImage] = useState(null);
@@ -53,16 +53,25 @@ export default function CaptureScreen({ navigation }) {
     return unsubscribe;
   }, []);
 
-  // Reset state when screen comes into focus
+  // Handle screen focus and goal params
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      setImage(null);
-      setSelectedGoal(null);
-      setShowCamera(false);
+      // Check if a goal was passed from GoalsScreen
+      if (route.params?.goal) {
+        setSelectedGoal(route.params.goal);
+        setShowCamera(true);
+        // Clear the param so it doesn't persist on next visit
+        navigation.setParams({ goal: undefined });
+      } else {
+        // Reset state when no goal was passed
+        setImage(null);
+        setSelectedGoal(null);
+        setShowCamera(false);
+      }
     });
 
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, route.params?.goal]);
 
   const takePhoto = () => {
     if (!selectedGoal) {

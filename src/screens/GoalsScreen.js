@@ -124,7 +124,10 @@ export default function GoalsScreen({ navigation }) {
         {!isCompletedToday && (
           <TouchableOpacity
             style={[styles.postProofButton, isLate && styles.postProofButtonLate]}
-            onPress={() => navigation.navigate('Capture', { goal: item })}
+            onPress={() => navigation.navigate('Capture', { 
+              screen: 'CaptureMain',
+              params: { goal: item }
+            })}
           >
             <Text style={styles.postProofButtonText}>
               {isLate ? 'Post Late (Streak Broken)' : 'Post Proof'}

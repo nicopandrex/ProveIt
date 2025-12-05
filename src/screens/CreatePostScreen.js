@@ -38,9 +38,12 @@ export default function CreatePostScreen({ route, navigation }) {
         auth.currentUser.displayName || 'User'
       );
 
-      // Pop to top of Capture stack to reset it, then navigate to Feed
+      // Pop to top of Capture stack to reset it, then navigate to Feed Me tab
       navigation.popToTop();
-      navigation.getParent()?.navigate('Feed');
+      navigation.getParent()?.navigate('Feed', {
+        screen: 'FeedMain',
+        params: { initialTab: 'me' }
+      });
     } catch (error) {
       Alert.alert('Error', error.message);
     } finally {

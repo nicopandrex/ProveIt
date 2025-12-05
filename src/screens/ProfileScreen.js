@@ -182,25 +182,25 @@ export default function ProfileScreen({ navigation }) {
         
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Ionicons name="checkmark-circle" size={32} color="#4ecdc4" />
+            <Text style={styles.statEmoji}>✅</Text>
             <Text style={styles.statNumber}>{userStats?.postsCompleted || 0}</Text>
             <Text style={styles.statLabel}>Goals Completed</Text>
           </View>
           
           <View style={styles.statCard}>
-            <Ionicons name="people" size={32} color="#4ecdc4" />
+            <Text style={styles.statEmoji}>👥</Text>
             <Text style={styles.statNumber}>{friendCount}</Text>
             <Text style={styles.statLabel}>Friends</Text>
           </View>
           
           <View style={styles.statCard}>
-            <Ionicons name="flame" size={32} color="#ffa726" />
+            <Text style={styles.statEmoji}>🔥</Text>
             <Text style={styles.statNumber}>{userStats?.longestStreak || 0}</Text>
             <Text style={styles.statLabel}>Longest Streak</Text>
           </View>
           
           <View style={styles.statCard}>
-            <Ionicons name="nutrition" size={32} color="#ff6b6b" />
+            <Text style={styles.statEmoji}>🍅</Text>
             <Text style={styles.statNumber}>{userStats?.tomatoCount || 0}</Text>
             <Text style={styles.statLabel}>Tomatoes Received</Text>
           </View>
@@ -366,6 +366,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '48%',
     marginBottom: 12,
+  },
+  statEmoji: {
+    fontSize: 32,
   },
   statNumber: {
     fontSize: 24,

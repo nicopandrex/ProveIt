@@ -170,15 +170,20 @@ export const addReaction = async (postId, reactionType, userId) => {
       },
     }, { merge: true });
 
-    // If tomato reaction, increment user's tomato count
+    // If tomato reaction, increment post author's tomato count
     if (reactionType === 'tomato') {
       try {
-        const userRef = doc(db, 'users', userId);
-        await setDoc(userRef, {
-          stats: {
-            tomatoCount: increment(1),
-          },
-        }, { merge: true });
+        // Get the post to find the author
+        const postSnap = await getDoc(postRef);
+        if (postSnap.exists()) {
+          const postAuthorId = postSnap.data().userId;
+          const authorRef = doc(db, 'users', postAuthorId);
+          await setDoc(authorRef, {
+            stats: {
+              tomatoCount: increment(1),
+            },
+          }, { merge: true });
+        }
       } catch (userError) {
         console.error('Failed to update user tomato count:', userError);
         // Continue even if user update fails
@@ -207,15 +212,20 @@ export const removeReaction = async (postId, reactionType, userId) => {
       },
     }, { merge: true });
 
-    // If tomato reaction, decrement user's tomato count
+    // If tomato reaction, decrement post author's tomato count
     if (reactionType === 'tomato') {
       try {
-        const userRef = doc(db, 'users', userId);
-        await setDoc(userRef, {
-          stats: {
-            tomatoCount: increment(-1),
-          },
-        }, { merge: true });
+        // Get the post to find the author
+        const postSnap = await getDoc(postRef);
+        if (postSnap.exists()) {
+          const postAuthorId = postSnap.data().userId;
+          const authorRef = doc(db, 'users', postAuthorId);
+          await setDoc(authorRef, {
+            stats: {
+              tomatoCount: increment(-1),
+            },
+          }, { merge: true });
+        }
       } catch (userError) {
         console.error('Failed to update user tomato count:', userError);
         // Continue even if user update fails

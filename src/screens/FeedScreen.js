@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,12 +16,26 @@ import MissedPostCard from '../components/MissedPostCard';
 import TomatoAnimation from '../components/TomatoAnimation';
 import PostSkeleton from '../components/PostSkeleton';
 
-export default function FeedScreen({ navigation }) {
+export default function FeedScreen({ navigation, route }) {
   const [activeTab, setActiveTab] = useState('friends');
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [animationQueue, setAnimationQueue] = useState([]);
+  const flatListRef = useRef(null);
+
+  // Check for initialTab param and switch to it
+  useEffect(() => {
+    if (route.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+      // Scroll to top after a brief delay to ensure posts are loaded
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 100);
+      // Clear the param after using it
+      navigation.setParams({ initialTab: undefined });
+    }
+  }, [route.params?.initialTab]);
 
   useEffect(() => {
     // Don't load posts if user is not authenticated
@@ -201,6 +215,7 @@ export default function FeedScreen({ navigation }) {
         </View>
         
         <FlatList
+          ref={flatListRef}
           data={loading ? [1, 2, 3] : posts}
           renderItem={loading ? () => <PostSkeleton /> : renderPost}
           keyExtractor={(item) => loading ? `skeleton-${item}` : item.id}
