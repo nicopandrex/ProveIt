@@ -20,7 +20,7 @@ import TomatoAnimation from './TomatoAnimation';
 import HeartAnimation from './HeartAnimation';
 import Avatar from './Avatar';
 
-export default function PostCard({ post }) {
+export default function PostCard({ post, onAnimationStart }) {
   const [reactions, setReactions] = useState({
     cheer: post.reactions?.cheer || 0,
     nudge: post.reactions?.nudge || 0,
@@ -35,6 +35,9 @@ export default function PostCard({ post }) {
   const [isCooldown, setIsCooldown] = useState(false);
   const [animationPositions, setAnimationPositions] = useState(null);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+  const [showSplat, setShowSplat] = useState(false);
+  const splatOpacity = useRef(new Animated.Value(0)).current;
+  const splatScale = useRef(new Animated.Value(0)).current;
   
   const cardRef = useRef(null);
   const tomatoButtonRef = useRef(null);
@@ -151,20 +154,28 @@ export default function PostCard({ post }) {
           const screenHeight = Dimensions.get('window').height;
           const screenWidth = Dimensions.get('window').width;
           
-          console.log('Card position:', { cx, cy, cw, ch });
+          console.log('PostCard position:', { cx, cy, cw, ch });
           
-          // Calculate positions RELATIVE to the card container, not screen
+          // Calculate screen-absolute positions (same as MissedPostCard)
           const startPos = {
-            x: screenWidth - cx - 80, // Bottom right relative to card
-            y: screenHeight - cy - 120, // Bottom right relative to card
+            x: screenWidth + 50, // Off the right side of screen
+            y: cy + ch / 2 - 30, // Same vertical level as the target card
           };
           const endPos = {
-            x: cw / 2 - 30, // Center of card (card-relative)
-            y: ch / 2 - 30, // Center of card (card-relative)
+            x: cx + cw / 2 - 30, // Center of this specific card (screen absolute)
+            y: cy + ch / 2 - 30, // Center of this specific card (screen absolute)
           };
 
           setAnimationPositions({ start: startPos, end: endPos });
           setIsAnimating(true);
+          
+          // Notify parent to show animation at FeedScreen level
+          if (onAnimationStart) {
+            console.log('Calling onAnimationStart with positions:', { start: startPos, end: endPos });
+            onAnimationStart({ start: startPos, end: endPos }, handleAnimationComplete);
+          } else {
+            console.warn('onAnimationStart callback not provided!');
+          }
           setIsCooldown(true);
 
           // Trigger shake effect after 800ms (when tomato hits)
@@ -227,6 +238,33 @@ export default function PostCard({ post }) {
   const handleAnimationComplete = () => {
     setIsAnimating(false);
     setAnimationPositions(null);
+    
+    // Show splat effect
+    setShowSplat(true);
+    Animated.parallel([
+      Animated.timing(splatOpacity, {
+        toValue: 1,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(splatScale, {
+        toValue: 1.2,
+        friction: 3,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setTimeout(() => {
+        Animated.timing(splatOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowSplat(false);
+          splatScale.setValue(0);
+        });
+      }, 600);
+    });
   };
 
   const renderPostContent = () => {
@@ -341,13 +379,19 @@ export default function PostCard({ post }) {
 
   return (
     <View style={styles.outerContainer}>
-      {/* Tomato Animation Overlay - Above everything */}
-      {isAnimating && animationPositions && (
-        <TomatoAnimation
-          startPosition={animationPositions.start}
-          endPosition={animationPositions.end}
-          onComplete={handleAnimationComplete}
-        />
+      {/* Splat Effect - Rendered inside card so it scrolls with card */}
+      {showSplat && (
+        <Animated.View
+          style={[
+            styles.splatOverlay,
+            {
+              opacity: splatOpacity,
+              transform: [{ scale: splatScale }],
+            },
+          ]}
+        >
+          <Text style={styles.splatEmoji}>💥</Text>
+        </Animated.View>
       )}
       
       {/* Heart Animation Overlay - When user likes a post */}
@@ -414,6 +458,22 @@ export default function PostCard({ post }) {
 const styles = StyleSheet.create({
   outerContainer: {
     position: 'relative',
+  },
+  splatOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 120,
+    height: 120,
+    marginLeft: -60,
+    marginTop: -60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    pointerEvents: 'none',
+  },
+  splatEmoji: {
+    fontSize: 100,
   },
   container: {
     backgroundColor: '#1a1a1a',

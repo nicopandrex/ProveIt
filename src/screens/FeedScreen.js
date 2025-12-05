@@ -20,7 +20,7 @@ export default function FeedScreen({ navigation }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [animationData, setAnimationData] = useState(null);
+  const [animationQueue, setAnimationQueue] = useState([]);
 
   useEffect(() => {
     // Don't load posts if user is not authenticated
@@ -97,19 +97,31 @@ export default function FeedScreen({ navigation }) {
           post={item}
           onAnimationStart={(positions, onComplete) => {
             console.log('FeedScreen received animation start:', positions);
-            setAnimationData({ positions, onComplete });
+            const animationId = Date.now() + Math.random();
+            setAnimationQueue(prev => [...prev, { id: animationId, positions, onComplete }]);
           }}
         />
       );
     }
-    return <PostCard post={item} />;
+    return (
+      <PostCard 
+        post={item} 
+        onAnimationStart={(positions, onComplete) => {
+          const animationId = Date.now() + Math.random();
+          setAnimationQueue(prev => [...prev, { id: animationId, positions, onComplete }]);
+        }}
+      />
+    );
   };
 
-  const handleAnimationComplete = () => {
-    if (animationData?.onComplete) {
-      animationData.onComplete();
-    }
-    setAnimationData(null);
+  const handleAnimationComplete = (animationId) => {
+    setAnimationQueue(prev => {
+      const animation = prev.find(a => a.id === animationId);
+      if (animation?.onComplete) {
+        animation.onComplete();
+      }
+      return prev.filter(a => a.id !== animationId);
+    });
   };
 
   const renderEmptyState = () => {
@@ -141,59 +153,60 @@ export default function FeedScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Global Animation Overlay */}
-      {animationData && (
-        <>
-          {console.log('Rendering TomatoAnimation with:', animationData)}
-          <TomatoAnimation
-            startPosition={animationData.positions.start}
-            endPosition={animationData.positions.end}
-            onComplete={handleAnimationComplete}
-          />
-        </>
-      )}
-      
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>ProveIt</Text>
-        
-        <View style={styles.tabs}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
-            onPress={() => setActiveTab('friends')}
-          >
-            <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
-              Friends
-            </Text>
-          </TouchableOpacity>
+    <>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>ProveIt</Text>
           
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'me' && styles.activeTab]}
-            onPress={() => setActiveTab('me')}
-          >
-            <Text style={[styles.tabText, activeTab === 'me' && styles.activeTabText]}>
-              Me
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.tabs}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
+              onPress={() => setActiveTab('friends')}
+            >
+              <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
+                Friends
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'me' && styles.activeTab]}
+              onPress={() => setActiveTab('me')}
+            >
+              <Text style={[styles.tabText, activeTab === 'me' && styles.activeTabText]}>
+                Me
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
+        
+        <FlatList
+          data={loading ? [1, 2, 3] : posts}
+          renderItem={loading ? () => <PostSkeleton /> : renderPost}
+          keyExtractor={(item) => loading ? `skeleton-${item}` : item.id}
+          style={styles.feed}
+          ListEmptyComponent={!loading && renderEmptyState}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#fff"
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
       </View>
       
-      <FlatList
-        data={loading ? [1, 2, 3] : posts}
-        renderItem={loading ? () => <PostSkeleton /> : renderPost}
-        keyExtractor={(item) => loading ? `skeleton-${item}` : item.id}
-        style={styles.feed}
-        ListEmptyComponent={!loading && renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#fff"
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+      {/* Global Animation Overlay - Only for flying tomato */}
+      {animationQueue.map((animation) => (
+        <TomatoAnimation
+          key={animation.id}
+          startPosition={animation.positions.start}
+          endPosition={animation.positions.end}
+          onComplete={() => handleAnimationComplete(animation.id)}
+          renderSplatInCard={true}
+        />
+      ))}
+    </>
   );
 }
 

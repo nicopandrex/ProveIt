@@ -1,15 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 
-export default function TomatoAnimation({ startPosition, endPosition, onComplete }) {
+export default function TomatoAnimation({ startPosition, endPosition, onComplete, renderSplatInCard }) {
   const translateX = useRef(new Animated.Value(startPosition.x)).current;
   const translateY = useRef(new Animated.Value(startPosition.y)).current;
   const tomatoScale = useRef(new Animated.Value(1)).current;
   const tomatoOpacity = useRef(new Animated.Value(1)).current;
   const tomatoRotation = useRef(new Animated.Value(0)).current;
-  
-  const splatScale = useRef(new Animated.Value(0)).current;
-  const splatOpacity = useRef(new Animated.Value(0)).current;
 
   console.log('TomatoAnimation mounted', { startPosition, endPosition });
 
@@ -60,38 +57,10 @@ export default function TomatoAnimation({ startPosition, endPosition, onComplete
         }),
       ]),
     ]).start(() => {
-      // Hide tomato and show splat
-      Animated.parallel([
-        Animated.timing(tomatoOpacity, {
-          toValue: 0,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(splatOpacity, {
-          toValue: 1,
-          duration: 50,
-          useNativeDriver: true,
-        }),
-        Animated.spring(splatScale, {
-          toValue: 1.2,
-          friction: 3,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        // Fade out splat
-        setTimeout(() => {
-          Animated.timing(splatOpacity, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }).start(() => {
-            if (onComplete) {
-              onComplete();
-            }
-          });
-        }, 600);
-      });
+      // Animation complete - splat will be shown in the card
+      if (onComplete) {
+        onComplete();
+      }
     });
   }, []);
 
@@ -116,23 +85,6 @@ export default function TomatoAnimation({ startPosition, endPosition, onComplete
         ]}
       >
         <Text style={styles.tomatoEmoji}>🍅</Text>
-      </Animated.View>
-
-      {/* Splat Effect */}
-      <Animated.View
-        style={[
-          styles.splat,
-          {
-            transform: [
-              { translateX: endPosition.x },
-              { translateY: endPosition.y },
-              { scale: splatScale },
-            ],
-            opacity: splatOpacity,
-          },
-        ]}
-      >
-        <Text style={styles.splatEmoji}>💥</Text>
       </Animated.View>
     </View>
   );

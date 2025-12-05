@@ -26,6 +26,9 @@ export default function MissedPostCard({ post, onAnimationStart }) {
   
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationPositions, setAnimationPositions] = useState(null);
+  const [showSplat, setShowSplat] = useState(false);
+  const splatOpacity = useRef(new Animated.Value(0)).current;
+  const splatScale = useRef(new Animated.Value(0)).current;
   
   const cardRef = useRef(null);
   const tomatoButtonRef = useRef(null);
@@ -135,10 +138,52 @@ export default function MissedPostCard({ post, onAnimationStart }) {
   const handleAnimationComplete = () => {
     setIsAnimating(false);
     setAnimationPositions(null);
+    
+    // Show splat effect
+    setShowSplat(true);
+    Animated.parallel([
+      Animated.timing(splatOpacity, {
+        toValue: 1,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(splatScale, {
+        toValue: 1.2,
+        friction: 3,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setTimeout(() => {
+        Animated.timing(splatOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowSplat(false);
+          splatScale.setValue(0);
+        });
+      }, 600);
+    });
   };
 
   return (
     <View style={styles.outerContainer}>
+      {/* Splat Effect - Rendered inside card so it scrolls with card */}
+      {showSplat && (
+        <Animated.View
+          style={[
+            styles.splatOverlay,
+            {
+              opacity: splatOpacity,
+              transform: [{ scale: splatScale }],
+            },
+          ]}
+        >
+          <Text style={styles.splatEmoji}>💥</Text>
+        </Animated.View>
+      )}
+      
       <Animated.View style={[styles.container, { transform: [{ translateX: shakeAnim }] }]} ref={cardRef}>
         <View style={styles.postHeader}>
           <View style={styles.userInfo}>
@@ -176,6 +221,22 @@ export default function MissedPostCard({ post, onAnimationStart }) {
 const styles = StyleSheet.create({
   outerContainer: {
     position: 'relative',
+  },
+  splatOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 120,
+    height: 120,
+    marginLeft: -60,
+    marginTop: -60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    pointerEvents: 'none',
+  },
+  splatEmoji: {
+    fontSize: 100,
   },
   container: {
     backgroundColor: '#1a1a1a',
