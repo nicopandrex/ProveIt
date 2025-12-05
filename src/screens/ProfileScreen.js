@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { signOut } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, getDocs } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 import Avatar from '../components/Avatar';
 import ImageCropper from '../components/ImageCropper';
@@ -20,6 +20,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { uploadProfileImageToS3 } from '../services/s3Service';
 import { updateProfilePhoto } from '../services/userService';
 import { clearCacheForKey } from '../services/imageCacheService';
+import { createPost } from '../services/postService';
 
 export default function ProfileScreen({ navigation }) {
   const [user, setUser] = useState(null);
@@ -141,6 +142,39 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
+  const handleCreateMissedPost = async () => {
+    if (!auth.currentUser) return;
+    
+    try {
+      // Get user's first goal
+      const goalsSnapshot = await getDocs(
+        collection(db, 'users', auth.currentUser.uid, 'goals')
+      );
+      
+      if (goalsSnapshot.empty) {
+        Alert.alert('No Goals', 'Create a goal first to test missed posts');
+        return;
+      }
+      
+      const firstGoal = goalsSnapshot.docs[0];
+      const goalData = firstGoal.data();
+      
+      // Create missed goal post
+      await createPost({
+        userId: auth.currentUser.uid,
+        userDisplayName: user?.displayName || 'User',
+        goalId: firstGoal.id,
+        type: 'missed_goal',
+        message: `Missed goal: ${goalData.title}`,
+      });
+      
+      Alert.alert('Success', 'Missed goal post created for demo!');
+    } catch (error) {
+      console.error('Error creating missed post:', error);
+      Alert.alert('Error', 'Failed to create missed post');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -235,6 +269,15 @@ export default function ProfileScreen({ navigation }) {
           <Ionicons name="settings-outline" size={24} color="#fff" />
           <Text style={styles.actionText}>Settings</Text>
           <Ionicons name="chevron-forward" size={24} color="#666" style={styles.chevron} />
+        </TouchableOpacity>
+        
+        {/* Debug button - remove before production */}
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: '#2a2a1a' }]}
+          onPress={handleCreateMissedPost}
+        >
+          <Ionicons name="bug-outline" size={24} color="#ffa726" />
+          <Text style={[styles.actionText, { color: '#ffa726' }]}>Create Missed Post (Debug)</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 

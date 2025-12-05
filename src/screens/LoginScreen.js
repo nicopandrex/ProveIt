@@ -30,9 +30,12 @@ export default function LoginScreen({ navigation }) {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log('Login successful, user ID:', userCredential.user.uid);
       
-      // Ensure user document exists in Firestore
+      // Ensure user document exists in Firestore before navigation
       await ensureUserDocument(userCredential.user);
       console.log('User document ensured');
+      
+      // Wait a bit for auth state to propagate
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Navigation will be handled by AppNavigator
     } catch (error) {

@@ -37,17 +37,26 @@ export default function AppNavigator() {
         const congratsFlag = await AsyncStorage.getItem('showingCongratsScreen');
         console.log('Congrats flag:', congratsFlag);
         
-        if (congratsFlag === 'true') {
+        // Check if user has completed onboarding
+        const completed = await checkOnboardingStatus(user.uid);
+        console.log('Onboarding status for', user.uid, ':', completed);
+        
+        // If user has completed onboarding, clear the congrats flag
+        if (completed && congratsFlag === 'true') {
+          console.log('User already completed onboarding, clearing congrats flag');
+          await AsyncStorage.removeItem('showingCongratsScreen');
+          setShowingCongratsScreen(false);
+        } else if (congratsFlag === 'true') {
           // Don't check onboarding status, stay in OnboardingStack
           setShowingCongratsScreen(true);
           setOnboardingComplete(false);
         } else {
-          // Check if user has completed onboarding
-          const completed = await checkOnboardingStatus(user.uid);
-          console.log('Onboarding status for', user.uid, ':', completed);
           setOnboardingComplete(completed);
         }
       } else {
+        // Clear congrats flag when user logs out
+        await AsyncStorage.removeItem('showingCongratsScreen');
+        setShowingCongratsScreen(false);
         setOnboardingComplete(false);
       }
       
