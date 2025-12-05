@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { createAccountAndGoal } from '../../services/onboardingAccountService';
 import { CommonActions } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function GoalDeadlineScreen({ navigation, route }) {
   const initialDate = new Date();
@@ -51,10 +52,14 @@ export default function GoalDeadlineScreen({ navigation, route }) {
         goalDeadlineTime,
       });
 
-      // Navigate to success screen
-      navigation.navigate('Success', {
+      // Set flag to prevent auto-navigation to MainTabs
+      await AsyncStorage.setItem('showingCongratsScreen', 'true');
+
+      // Navigate to goal completed screen (pass flag to prevent auto-redirect)
+      navigation.navigate('GoalCompleted', {
         ...route.params,
         goalDeadlineTime,
+        showCongrats: true,
       });
     } catch (error) {
       console.error('Error creating account and goal:', error);

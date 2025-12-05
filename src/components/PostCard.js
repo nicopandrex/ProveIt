@@ -19,6 +19,7 @@ import { auth, db } from '../../firebaseConfig';
 import TomatoAnimation from './TomatoAnimation';
 import HeartAnimation from './HeartAnimation';
 import Avatar from './Avatar';
+import PostSkeleton from './PostSkeleton';
 
 export default function PostCard({ post, onAnimationStart }) {
   const [reactions, setReactions] = useState({
@@ -50,6 +51,8 @@ export default function PostCard({ post, onAnimationStart }) {
   const [goalTitle, setGoalTitle] = useState(null);
   const [goalTitleLoading, setGoalTitleLoading] = useState(false);
   const [contentReady, setContentReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const loadTimeoutRef = useRef(null);
   const MAX_RETRIES = 3;
 
   // Fetch goal title if this is a proof post
@@ -62,13 +65,15 @@ export default function PostCard({ post, onAnimationStart }) {
           const goalSnap = await getDoc(goalRef);
           if (goalSnap.exists()) {
             setGoalTitle(goalSnap.data().title);
+          } else {
+            console.warn('Goal not found:', post.goalId);
           }
         } catch (error) {
           console.error('Failed to fetch goal title:', error);
         } finally {
           setGoalTitleLoading(false);
         }
-      } else if (post.type !== 'proof_post') {
+      } else {
         // Non-proof posts don't need goal title
         setGoalTitleLoading(false);
       }
@@ -93,7 +98,7 @@ export default function PostCard({ post, onAnimationStart }) {
         } finally {
           setImageLoading(false);
         }
-      } else if (post.type !== 'proof_post') {
+      } else {
         // Non-proof posts don't need images
         setImageLoading(false);
       }
@@ -101,6 +106,29 @@ export default function PostCard({ post, onAnimationStart }) {
 
     fetchSecureImageUrl();
   }, [post.id, post.type, post.imageUrl, retryCount]);
+
+  // Add timeout for loading to prevent infinite blank posts
+  useEffect(() => {
+    loadTimeoutRef.current = setTimeout(() => {
+      if (!contentReady) {
+        console.warn('Post load timeout:', post.id);
+        setLoadError(true);
+      }
+    }, 15000); // 15 second timeout
+
+    return () => {
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+    };
+  }, [contentReady, post.id]);
+
+  // Clear timeout when content becomes ready
+  useEffect(() => {
+    if (contentReady && loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current);
+    }
+  }, [contentReady]);
 
   // Check if content is ready to display (for proof posts)
   useEffect(() => {
@@ -268,6 +296,19 @@ export default function PostCard({ post, onAnimationStart }) {
   };
 
   const renderPostContent = () => {
+    // Show loading skeleton for content while waiting
+    if (!contentReady && !loadError) {
+      return (
+        <View style={styles.postContent}>
+          <View style={styles.loadingContentContainer}>
+            <ActivityIndicator size="small" color="#4ecdc4" style={{ marginBottom: 8 }} />
+            <View style={styles.skeletonBanner} />
+            <View style={styles.skeletonImage} />
+          </View>
+        </View>
+      );
+    }
+
     switch (post.type) {
       case 'goal_created':
         // Extract goal title from message (e.g., "Nico committed to: go crazy" -> "go crazy")
@@ -377,6 +418,40 @@ export default function PostCard({ post, onAnimationStart }) {
 
   const availableReactions = getAvailableReactions();
 
+  // Show error state if timeout or load failed
+  if (loadError) {
+    return (
+      <View style={styles.outerContainer}>
+        <View style={styles.container}>
+          <View style={styles.postHeader}>
+            <View style={styles.userInfo}>
+              <Avatar userId={post.userId} displayName={post.userDisplayName} size={40} style={styles.avatar} />
+              <View>
+                <Text style={styles.userName}>{post.userDisplayName || 'User'}</Text>
+                <Text style={styles.timestamp}>
+                  {formatPostTimestamp(post.timestamp)}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>⚠️ Failed to load post content</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={() => {
+                setLoadError(false);
+                setContentReady(false);
+                setRetryCount(prev => prev + 1);
+              }}
+            >
+              <Text style={styles.retryText}>Tap to retry</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.outerContainer}>
       {/* Splat Effect - Rendered inside card so it scrolls with card */}
@@ -459,6 +534,31 @@ const styles = StyleSheet.create({
   outerContainer: {
     position: 'relative',
   },
+  errorContainer: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 200,
+  },
+  errorText: {
+    color: '#ff6b6b',
+    fontSize: 16,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  retryText: {
+    color: '#4ecdc4',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   splatOverlay: {
     position: 'absolute',
     top: '50%',
@@ -517,6 +617,24 @@ const styles = StyleSheet.create({
   },
   postContent: {
     marginBottom: 12,
+  },
+  loadingContentContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  skeletonBanner: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  skeletonImage: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 8,
   },
   goalCompletionBanner: {
     flexDirection: 'row',

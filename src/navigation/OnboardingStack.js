@@ -14,6 +14,7 @@ import GoalIntroScreen from '../screens/onboarding/GoalIntroScreen';
 import FirstGoalTitleScreen from '../screens/onboarding/FirstGoalTitleScreen';
 import GoalFrequencyScreen from '../screens/onboarding/GoalFrequencyScreen';
 import GoalDeadlineScreen from '../screens/onboarding/GoalDeadlineScreen';
+import GoalCompletedScreen from '../screens/onboarding/GoalCompletedScreen';
 import SuccessScreen from '../screens/onboarding/SuccessScreen';
 
 // Import existing auth screens
@@ -101,6 +102,12 @@ export default function OnboardingStack() {
         name="GoalDeadline" 
         component={GoalDeadlineScreen}
         initialParams={initialParams}
+      />
+      <Stack.Screen 
+        name="GoalCompleted" 
+        component={GoalCompletedScreen}
+        initialParams={initialParams}
+        options={{ gestureEnabled: false }}
       />
       <Stack.Screen 
         name="Success" 

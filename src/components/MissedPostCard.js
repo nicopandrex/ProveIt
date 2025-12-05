@@ -198,7 +198,12 @@ export default function MissedPostCard({ post, onAnimationStart }) {
         </View>
 
         <View style={styles.postContent}>
-          <Text style={[styles.postText, styles.missedText]}>{post.message}</Text>
+          <View style={styles.goalMissedBanner}>
+            <Ionicons name="close-circle" size={20} color="#ff6b6b" />
+            <Text style={styles.goalMissedText}>
+              {post.message?.replace('Missed goal: ', 'missed: ') || post.message}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.reactions}>
@@ -280,6 +285,20 @@ const styles = StyleSheet.create({
   },
   postContent: {
     marginBottom: 12,
+  },
+  goalMissedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+    padding: 12,
+    borderRadius: 8,
+  },
+  goalMissedText: {
+    color: '#ff6b6b',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
+    flex: 1,
   },
   postText: {
     color: '#fff',

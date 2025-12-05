@@ -290,7 +290,7 @@ export const checkForMissedGoals = async (userId) => {
           userDisplayName,
           goalId,
           type: 'missed_goal',
-          message: `😢 Missed goal: ${goalData.title}`,
+          message: `Missed goal: ${goalData.title}`,
         });
       } catch (postError) {
         console.error('Error creating missed post:', postError);

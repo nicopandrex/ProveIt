@@ -53,7 +53,7 @@ export default function PostSkeleton() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#1a1a1a',
     marginBottom: 12,
     padding: 16,
     borderRadius: 12,
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#2a2a2a',
   },
   headerText: {
     marginLeft: 12,
@@ -77,26 +77,26 @@ const styles = StyleSheet.create({
   name: {
     height: 14,
     width: 120,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#2a2a2a',
     borderRadius: 4,
     marginBottom: 6,
   },
   time: {
     height: 12,
     width: 80,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#2a2a2a',
     borderRadius: 4,
   },
   banner: {
     height: 40,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#2a2a2a',
     borderRadius: 8,
     marginBottom: 12,
   },
   image: {
     width: '100%',
     aspectRatio: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#2a2a2a',
     borderRadius: 8,
     marginBottom: 12,
   },
