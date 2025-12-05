@@ -34,6 +34,7 @@ export default function PostCard({ post, onAnimationStart }) {
   
   const [isAnimating, setIsAnimating] = useState(false);
   const [isCooldown, setIsCooldown] = useState(false);
+  const isProcessingRef = useRef(false);
   const [animationPositions, setAnimationPositions] = useState(null);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
   const [showSplat, setShowSplat] = useState(false);
@@ -169,13 +170,17 @@ export default function PostCard({ post, onAnimationStart }) {
       }
     }
 
-    // Check cooldown for tomato reactions
-    if (reactionType === 'tomato' && isCooldown) {
+    // Check cooldown for tomato reactions - use ref for synchronous check
+    if (reactionType === 'tomato' && (isCooldown || isProcessingRef.current)) {
       return;
     }
 
     // Handle tomato animation
     if (reactionType === 'tomato') {
+      // Set flags immediately to prevent spam (both state and ref)
+      setIsCooldown(true);
+      isProcessingRef.current = true;
+      
       // Get button and card positions
       tomatoButtonRef.current?.measureInWindow((bx, by, bw, bh) => {
         cardRef.current?.measureInWindow((cx, cy, cw, ch) => {
@@ -198,13 +203,15 @@ export default function PostCard({ post, onAnimationStart }) {
           setIsAnimating(true);
           
           // Notify parent to show animation at FeedScreen level
+          // Defer to next tick to avoid setState during render
           if (onAnimationStart) {
             console.log('Calling onAnimationStart with positions:', { start: startPos, end: endPos });
-            onAnimationStart({ start: startPos, end: endPos }, handleAnimationComplete);
+            setTimeout(() => {
+              onAnimationStart({ start: startPos, end: endPos }, handleAnimationComplete);
+            }, 0);
           } else {
             console.warn('onAnimationStart callback not provided!');
           }
-          setIsCooldown(true);
 
           // Trigger shake effect after 800ms (when tomato hits)
           setTimeout(() => {
@@ -237,10 +244,11 @@ export default function PostCard({ post, onAnimationStart }) {
             ]).start();
           }, 800);
 
-          // Cooldown timer (3 seconds)
+          // Cooldown timer (1 second)
           setTimeout(() => {
             setIsCooldown(false);
-          }, 3000);
+            isProcessingRef.current = false;
+          }, 1000);
         });
       });
     }

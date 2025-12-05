@@ -24,6 +24,7 @@ export default function MissedPostCard({ post, onAnimationStart }) {
     post.reactedUsers?.tomato?.[auth.currentUser?.uid] || false
   );
   
+  const isProcessingRef = useRef(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationPositions, setAnimationPositions] = useState(null);
   const [showSplat, setShowSplat] = useState(false);
@@ -40,8 +41,14 @@ export default function MissedPostCard({ post, onAnimationStart }) {
       return;
     }
 
+    // Check if already processing - use ref for synchronous check
+    if (isProcessingRef.current) {
+      return;
+    }
+
     // If already reacted, remove the reaction
     if (hasReacted) {
+      isProcessingRef.current = true;
       try {
         await removeReaction(post.id, reactionType, auth.currentUser.uid);
         
@@ -53,9 +60,15 @@ export default function MissedPostCard({ post, onAnimationStart }) {
         setHasReacted(false);
       } catch (error) {
         Alert.alert('Error', 'Failed to remove reaction');
+      } finally {
+        isProcessingRef.current = false;
       }
       return;
     }
+
+    // Set hasReacted and processing flag immediately to prevent spam
+    setHasReacted(true);
+    isProcessingRef.current = true;
 
     // Handle tomato animation
     // Get button and card positions
@@ -80,9 +93,12 @@ export default function MissedPostCard({ post, onAnimationStart }) {
         setIsAnimating(true);
 
         // Notify parent to show animation
+        // Defer to next tick to avoid setState during render
         if (onAnimationStart) {
           console.log('Calling onAnimationStart with positions:', { start: startPos, end: endPos });
-          onAnimationStart({ start: startPos, end: endPos }, handleAnimationComplete);
+          setTimeout(() => {
+            onAnimationStart({ start: startPos, end: endPos }, handleAnimationComplete);
+          }, 0);
         } else {
           console.warn('onAnimationStart callback not provided!');
         }
@@ -128,10 +144,17 @@ export default function MissedPostCard({ post, onAnimationStart }) {
         ...prev,
         [reactionType]: prev[reactionType] + 1,
       }));
-      setHasReacted(true);
+      
+      // Reset processing flag after animation completes (allow unreacting later)
+      setTimeout(() => {
+        isProcessingRef.current = false;
+      }, 500); // Wait for animation to finish
     } catch (error) {
       console.error('Add reaction error:', error);
       Alert.alert('Error', 'Failed to add reaction');
+      // Reset hasReacted and processing flag on error
+      setHasReacted(false);
+      isProcessingRef.current = false;
     }
   };
 
