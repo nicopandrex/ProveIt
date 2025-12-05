@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { getFriendsPosts, getMyPosts } from '../services/postService';
 import { checkForMissedGoals } from '../services/goalCompletionService';
 import { auth } from '../../firebaseConfig';
@@ -168,7 +169,15 @@ export default function FeedScreen({ navigation }) {
     <>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>ProveIt</Text>
+          <View style={styles.headerTop}>
+            <Text style={styles.headerTitle}>ProveIt</Text>
+            <TouchableOpacity 
+              style={styles.addFriendsIcon}
+              onPress={() => navigation.navigate('SearchUsers')}
+            >
+              <Ionicons name="person-add" size={24} color="#4ecdc4" />
+            </TouchableOpacity>
+          </View>
           
           <View style={styles.tabs}>
             <TouchableOpacity
@@ -234,11 +243,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 16,
+  },
+  addFriendsIcon: {
+    padding: 8,
   },
   tabs: {
     flexDirection: 'row',

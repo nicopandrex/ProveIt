@@ -120,10 +120,9 @@ export const declineFriendRequest = async (requestId, userId) => {
       throw new Error('Unauthorized to decline this request');
     }
 
-    // Update request status
-    await updateDoc(requestRef, {
-      status: 'declined',
-    });
+    // Delete the request instead of marking as declined
+    // This allows the sender to send another request in the future
+    await deleteDoc(requestRef);
 
     return true;
   } catch (error) {
