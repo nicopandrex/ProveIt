@@ -84,10 +84,22 @@ export default function FeedScreen({ navigation }) {
     };
   }, [activeTab]);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    // The real-time listener will automatically update the data
-    setRefreshing(false);
+    
+    // Re-check for missed goals when refreshing
+    if (auth.currentUser) {
+      try {
+        await checkForMissedGoals(auth.currentUser.uid);
+      } catch (error) {
+        console.warn('Failed to check missed goals on refresh:', error);
+      }
+    }
+    
+    // Give a moment for the real-time listener to update
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 500);
   };
 
   const renderPost = ({ item }) => {
