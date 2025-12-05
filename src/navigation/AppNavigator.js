@@ -19,11 +19,13 @@ export default function AppNavigator() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('Auth state changed, user:', user ? user.uid : 'null');
       setUser(user);
       
       if (user) {
         // Check if user has completed onboarding
         const completed = await checkOnboardingStatus(user.uid);
+        console.log('Onboarding status for', user.uid, ':', completed);
         setOnboardingComplete(completed);
       } else {
         setOnboardingComplete(false);
@@ -43,16 +45,22 @@ export default function AppNavigator() {
     const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
+        console.log('User document snapshot for', user.uid, ':', data.onboardingCompleted);
         setOnboardingComplete(data.onboardingCompleted || false);
       }
+    }, (error) => {
+      console.error('Error listening to user document:', error);
     });
 
     return unsubscribe;
   }, [user]);
 
   if (loading) {
+    console.log('AppNavigator: Still loading...');
     return null; // You can add a loading screen here
   }
+
+  console.log('AppNavigator rendering - User:', user ? user.uid : 'null', 'Onboarding complete:', onboardingComplete);
 
   return (
     <NavigationContainer>

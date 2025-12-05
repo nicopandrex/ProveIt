@@ -44,6 +44,12 @@ export const ensureUserDocument = async (user) => {
         updates.usernameChangedAt = null;
       }
       
+      // Add onboardingCompleted field for existing users (assume completed if account exists)
+      if (userData.onboardingCompleted === undefined) {
+        updates.onboardingCompleted = true;
+        console.log('Setting onboardingCompleted to true for existing user');
+      }
+      
       if (Object.keys(updates).length > 0) {
         await updateDoc(userRef, updates);
         console.log('Updated user document with missing fields');

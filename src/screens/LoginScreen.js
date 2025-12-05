@@ -26,13 +26,17 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
+      console.log('Attempting login with email:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log('Login successful, user ID:', userCredential.user.uid);
       
       // Ensure user document exists in Firestore
       await ensureUserDocument(userCredential.user);
+      console.log('User document ensured');
       
       // Navigation will be handled by AppNavigator
     } catch (error) {
+      console.error('Login error:', error);
       Alert.alert('Login Failed', error.message);
     } finally {
       setLoading(false);
