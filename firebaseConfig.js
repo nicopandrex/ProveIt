@@ -1,15 +1,16 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import Constants from "expo-constants";
 
 // Firebase configuration - Authentication + Database
 const firebaseConfig = {
-  apiKey: "AIzaSyAJBiSkn5R0iCpZ4FOkv7CBl7H6WIxfWM8",
-  authDomain: "test-d72d4.firebaseapp.com",
-  projectId: "test-d72d4",
-  storageBucket: "test-d72d4.firebasestorage.app",
-  messagingSenderId: "859645866277",
-  appId: "1:859645866277:web:114b3414610a6e6fadeacc",
+  apiKey: Constants.expoConfig?.extra?.firebaseApiKey,
+  authDomain: Constants.expoConfig?.extra?.firebaseAuthDomain,
+  projectId: Constants.expoConfig?.extra?.firebaseProjectId,
+  storageBucket: Constants.expoConfig?.extra?.firebaseStorageBucket,
+  messagingSenderId: Constants.expoConfig?.extra?.firebaseMessagingSenderId,
+  appId: Constants.expoConfig?.extra?.firebaseAppId,
 };
 
 // Initialize Firebase
